@@ -1,0 +1,7 @@
+# PhpStorm
+.idea
+
+# Docker Compose
+.env
+
+/infra/docker/nginx/nginx-proxy/certs

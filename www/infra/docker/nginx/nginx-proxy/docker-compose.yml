@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  nginx-proxy:
+    container_name: nginx-proxy
+    image: jwilder/nginx-proxy:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    restart: unless-stopped
+    
+networks:
+  default:
+    external:
+      name: nginx-proxy
+
+# note: create-ssl-certificate only working on MAC.
+# run the command: create-ssl-certificate --hostname dockerlaravel --domain com
+#Rename the files in the ./certs ssl.crt and ssl.key to dockerlaravel.com.crt and dockerlaravel.com.key.

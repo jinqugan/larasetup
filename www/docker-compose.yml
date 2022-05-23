@@ -1,0 +1,117 @@
+version: "3.9"
+volumes:
+  php-fpm-socket:
+  db-store:
+services:
+  app:
+    container_name: php
+    build:
+      context: .
+      dockerfile: ./infra/docker/php/Dockerfile
+    volumes:
+      - type: volume
+        source: php-fpm-socket
+        target: /var/run/php-fpm
+        volume:
+          nocopy: true
+      - type: bind
+        source: ./backend
+        target: ${WORKDIR}
+    depends_on:
+       - db
+       - web
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - APP_TIMEZONE=${TIMEZONE}
+    restart: always
+    # tty: true
+    networks:
+      - laraldock
+      # - default
+
+  web:
+    container_name: nginx
+    build:
+      context: .
+      dockerfile: ./infra/docker/nginx/Dockerfile
+    ports:
+      - target: 80
+        published: ${WEB_PORT:-80}
+        protocol: tcp
+        mode: host
+    volumes:
+      - type: volume
+        source: php-fpm-socket
+        target: /var/run/php-fpm
+        volume:
+          nocopy: true
+      - type: bind
+        source: ./backend
+        target: ${WORKDIR}
+    depends_on:
+       - db
+      #  - app
+    environment:
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+      VIRTUAL_PORT: ${WEB_PORT}
+    restart: always
+    # tty: true
+    networks:
+      - laraldock
+      # - default
+
+  db:
+    container_name: mysql
+    image: mysql/mysql-server:latest
+    ports:
+      - target: 3306
+        published: ${DB_PORT}
+        protocol: tcp
+        mode: host
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD} 
+    volumes:
+      - db-store:/var/lib/mysql
+    restart: always
+    # tty: true
+    networks:
+      - laraldock
+      # - default
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin:latest
+    environment:
+      - PMA_HOST=db
+      - PMA_USER=${DB_USERNAME}
+      - PMA_PASSWORD=${DB_PASSWORD}
+    ports:
+      - 8080:80
+    restart: always
+    depends_on:
+       - db
+      #  - app
+    # tty: true
+    networks:
+      - laraldock
+      # - default
+
+networks:
+  laraldock:
+    driver: bridge
+  # default:
+  #   external:
+  #     name: nginx-proxy
+
+# ** nginx-proxy for local domain name
+# ** create docker network before launch nginx-proxy service for first uses
+# docker network create nginx-proxy
+# docker-compose up -d
